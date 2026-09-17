@@ -4391,7 +4391,7 @@ func (h *Handlers) handleHiveSiteOps(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "get space: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if !h.canReadSpace(r, space) {
+	if !h.canReadSpace(r, space) && !auth.IsHiveSiteOpsMachine(r.Context()) {
 		http.Error(w, "space not found", http.StatusNotFound)
 		return
 	}

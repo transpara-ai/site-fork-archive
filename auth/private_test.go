@@ -223,6 +223,51 @@ func TestPrivateOriginAndRoleBoundaries(t *testing.T) {
 	}
 }
 
+func TestPrivateHiveSiteOpsMachineCredentialIsReadOnlyAndRouteScoped(t *testing.T) {
+	a, _, _, _ := privateFixture(t)
+	key := strings.Repeat("h", 64)
+	if err := a.SetHiveSiteOpsAPIKey(key); err != nil {
+		t.Fatal(err)
+	}
+	handler := a.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		u := UserFromContext(r.Context())
+		if u == nil || !IsHiveSiteOpsMachine(r.Context()) {
+			t.Fatal("machine identity missing")
+		}
+		_, _ = w.Write([]byte(u.ID + ":" + u.Kind))
+	})
+	request := func(method, path, authorization, origin string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, "http://localhost:8080"+path, nil)
+		r.Header.Set("Authorization", authorization)
+		if origin != "" {
+			r.Header.Set("Origin", origin)
+		}
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		return w
+	}
+
+	if w := request(http.MethodGet, "/api/hive/site-ops?space=hive", "Bearer "+key, ""); w.Code != http.StatusOK || w.Body.String() != "hive-reconciliation:agent" {
+		t.Fatalf("valid machine read: status=%d body=%q", w.Code, w.Body.String())
+	}
+	if w := request(http.MethodGet, "/api/hive/site-ops?space=hive", "Bearer "+strings.Repeat("x", 64), ""); w.Code != http.StatusSeeOther {
+		t.Fatalf("wrong machine credential status=%d, want login redirect", w.Code)
+	}
+	if w := request(http.MethodGet, "/console/config", "Bearer "+key, ""); w.Code != http.StatusSeeOther {
+		t.Fatalf("machine credential escaped route boundary: status=%d", w.Code)
+	}
+	if w := request(http.MethodPost, "/api/hive/site-ops", "Bearer "+key, "http://localhost:8080"); w.Code != http.StatusUnauthorized {
+		t.Fatalf("machine credential gained write access: status=%d", w.Code)
+	}
+}
+
+func TestPrivateHiveSiteOpsMachineCredentialRejectsWeakKey(t *testing.T) {
+	a, _, _, _ := privateFixture(t)
+	if err := a.SetHiveSiteOpsAPIKey("short"); err == nil {
+		t.Fatal("weak Hive Site-ops API key accepted")
+	}
+}
+
 func TestPrivateGateProtectsUnwrappedRoutes(t *testing.T) {
 	a, _, _, _ := privateFixture(t)
 	called := false

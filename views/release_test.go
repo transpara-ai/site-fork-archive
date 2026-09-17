@@ -15,7 +15,7 @@ func TestSharedLayoutShowsSiteVersion(t *testing.T) {
 	if err := Layout("Test", "", profile.Default()).Render(context.Background(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(body.String(), `data-site-version="0.1.0"`) || !strings.Contains(body.String(), "Site v0.1.0 · abcdef012345") {
+	if !strings.Contains(body.String(), `data-site-version="0.1.1"`) || !strings.Contains(body.String(), "Site v0.1.1 · abcdef012345") {
 		t.Fatalf("shared layout missing release identity")
 	}
 }

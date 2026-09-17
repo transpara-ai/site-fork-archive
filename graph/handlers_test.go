@@ -2,12 +2,15 @@ package graph
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -3296,6 +3299,49 @@ func TestHandleHiveSiteOpsRejectsPrivateSpaceForNonMember(t *testing.T) {
 	}
 	if strings.Contains(w.Body.String(), "Secret kickoff") {
 		t.Fatalf("private payload leaked in response: %s", w.Body.String())
+	}
+}
+
+func TestHandleHiveSiteOpsMachineReadsPrivateSpace(t *testing.T) {
+	_, store := testDB(t)
+	codeHash := fmt.Sprintf("%x", sha256.Sum256([]byte(strings.Repeat("a", 64))))
+	directory := filepath.Join(t.TempDir(), "operators.json")
+	if err := os.WriteFile(directory, []byte(`{"origins":["http://localhost:8080"],"operators":[{"id":"alice","name":"Alice","role":"reviewer","code_sha256":"`+codeHash+`"}]}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	privateAccess, err := auth.NewPrivateAccess(store.db, directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := strings.Repeat("h", 64)
+	if err := privateAccess.SetHiveSiteOpsAPIKey(key); err != nil {
+		t.Fatal(err)
+	}
+	h := NewHandlers(store, privateAccess.RequireAuth, privateAccess.RequireAuth)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	slug := fmt.Sprintf("site-ops-machine-private-%d", time.Now().UnixNano())
+	space, err := store.CreateSpace(t.Context(), slug, "Private Site Ops", "", "test-user-1", "project", "private")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.DeleteSpace(t.Context(), space.ID) })
+	node, err := store.CreateNode(t.Context(), CreateNodeParams{SpaceID: space.ID, Kind: KindTask, Title: "Machine-visible kickoff", Author: "Tester", AuthorID: "test-user-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.RecordOp(t.Context(), space.ID, node.ID, "Tester", "test-user-1", "intend", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "http://localhost:8080/api/hive/site-ops?space="+url.QueryEscape(slug), nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("Accept", "application/json")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "Machine-visible kickoff") {
+		t.Fatalf("machine private-space read: status=%d body=%s", w.Code, w.Body.String())
 	}
 }
 
