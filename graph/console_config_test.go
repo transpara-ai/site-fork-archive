@@ -443,6 +443,11 @@ func TestConsoleConfigGroupsModelsByAccessAndExplainsTiers(t *testing.T) {
 			t.Errorf("model %q rendered %d times, want once", id, count)
 		}
 	}
+	for _, authMode := range []string{"subscription", "api-key", "local"} {
+		if !strings.Contains(out, `data-model-auth="`+authMode+`"`) {
+			t.Errorf("missing exact auth mode %q", authMode)
+		}
+	}
 	for _, text := range []string{"Catalog checked 2026-09-08", "Subscription verified 2026-09-17", "ambiguous, high-impact", "implementation and tool use", "routine, high-throughput"} {
 		if !strings.Contains(out, text) {
 			t.Errorf("missing explanatory copy %q", text)

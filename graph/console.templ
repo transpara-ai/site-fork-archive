@@ -882,6 +882,7 @@ templ consoleConfigModelRow(model OpsHiveModelCatalogEntry) {
 			<span class="text-xs text-emerald-300">Catalog checked { model.Metadata["verified_at"] }</span>
 		}
 		<span class="text-xs text-warm-muted">{ orFallback(model.Provider, "provider not projected") }</span>
+		<span data-model-auth={ orFallback(model.AuthMode, "auth not projected") } class="text-xs text-warm-muted">{ orFallback(model.AuthMode, "auth not projected") }</span>
 		<span class="text-xs text-warm-muted">{ orFallback(model.Tier, "tier not projected") }</span>
 		if model.Deprecated {
 			<span class="text-xs text-amber-300 ml-auto">deprecated</span>
