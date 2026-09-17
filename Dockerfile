@@ -39,8 +39,8 @@ RUN CGO_ENABLED=0 go build -mod=vendor -o /site ./cmd/site/
 FROM alpine:3.21
 RUN apk add --no-cache ca-certificates nodejs npm
 RUN npm install -g @anthropic-ai/claude-code
-COPY --from=builder /site /site
+COPY --from=builder /site /usr/local/bin/site
 COPY --from=builder /app/static /static
 
 EXPOSE 8080
-CMD ["/site"]
+CMD ["/usr/local/bin/site"]
