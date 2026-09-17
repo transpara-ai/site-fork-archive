@@ -154,6 +154,24 @@ func PrivateActionAllowed(role, method, path string) bool {
 	return len(parts) == 7 && parts[4] == "interventions" && parts[5] != "" && parts[6] == "resolve"
 }
 
+// privateSpaceMembershipActionAllowed limits the private Site's general
+// application mutation route to self-service space membership. The route also
+// carries privileged operations, so authorizing the path alone is insufficient.
+func privateSpaceMembershipActionAllowed(role, method, path, operation string) bool {
+	if (role != "reviewer" && role != "operator") || method != http.MethodPost {
+		return false
+	}
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) != 3 || parts[0] != "app" || parts[1] == "" || parts[2] != "op" {
+		return false
+	}
+	return operation == "join" || operation == "leave"
+}
+
+func privateSpaceMembershipActionCandidate(role, method, path string) bool {
+	return privateSpaceMembershipActionAllowed(role, method, path, "join")
+}
+
 func NewPrivateAccess(db *sql.DB, file string) (*PrivateAccess, error) {
 	d, err := loadPrivateDirectory(file)
 	if err != nil {
@@ -357,7 +375,16 @@ func (a *PrivateAccess) RequireAuth(next http.HandlerFunc) http.Handler {
 			}
 			return
 		}
-		if !PrivateActionAllowed(operator.Role, r.Method, r.URL.Path) {
+		actionAllowed := PrivateActionAllowed(operator.Role, r.Method, r.URL.Path)
+		if !actionAllowed && privateSpaceMembershipActionCandidate(operator.Role, r.Method, r.URL.Path) {
+			r.Body = http.MaxBytesReader(w, r.Body, 4096)
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Invalid space membership request.", http.StatusBadRequest)
+				return
+			}
+			actionAllowed = privateSpaceMembershipActionAllowed(operator.Role, r.Method, r.URL.Path, r.PostForm.Get("op"))
+		}
+		if !actionAllowed {
 			http.Error(w, "Your role cannot perform this action.", 403)
 			return
 		}

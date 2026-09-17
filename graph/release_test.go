@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/transpara-ai/site/internal/buildinfo"
 	"github.com/transpara-ai/site/profile"
 )
 
@@ -16,7 +17,7 @@ func TestOperationalPagesShowSiteVersionAndRevision(t *testing.T) {
 	if err := ConsolePage(data, ViewUser{}, profile.Default()).Render(context.Background(), &body); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`data-site-version="0.1.2"`, "Site v0.1.2 · abcdef012345"} {
+	for _, want := range []string{`data-site-version="` + buildinfo.Version() + `"`, "Site v" + buildinfo.Version() + " · abcdef012345"} {
 		if !strings.Contains(body.String(), want) {
 			t.Fatalf("console page missing release identity %q", want)
 		}
