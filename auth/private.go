@@ -191,11 +191,29 @@ func (a *PrivateAccess) directory() (PrivateDirectory, error) {
 }
 
 func privateOriginAllowed(r *http.Request, d PrivateDirectory, mutation bool) bool {
+	if len(d.Origins) == 0 {
+		return false
+	}
+	configuredOrigin, err := url.Parse(d.Origins[0])
+	if err != nil || (configuredOrigin.Scheme != "http" && configuredOrigin.Scheme != "https") {
+		return false
+	}
+	requestHost, err := url.Parse(configuredOrigin.Scheme + "://" + r.Host)
+	if err != nil || requestHost.Host == "" || requestHost.User != nil || requestHost.Path != "" || requestHost.RawQuery != "" || requestHost.Fragment != "" {
+		return false
+	}
 	knownHost := false
 	for _, origin := range d.Origins {
 		u, _ := url.Parse(origin)
 		if strings.EqualFold(r.Host, u.Host) {
 			knownHost = true
+			break
+		}
+		// Browser bridges and SSH clients can assign an ephemeral local port.
+		// Permit that port only for an explicitly configured loopback hostname.
+		if privateLoopbackHost(requestHost.Hostname()) && privateLoopbackHost(u.Hostname()) && strings.EqualFold(requestHost.Hostname(), u.Hostname()) {
+			knownHost = true
+			break
 		}
 	}
 	if !knownHost {
@@ -207,20 +225,27 @@ func privateOriginAllowed(r *http.Request, d PrivateDirectory, mutation bool) bo
 	if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
 		return false
 	}
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		u, err := url.Parse(r.Header.Get("Referer"))
-		if err != nil || u.Host == "" || u.User != nil {
-			return false
-		}
-		origin = u.Scheme + "://" + u.Host
+	rawOrigin := r.Header.Get("Origin")
+	fromReferer := rawOrigin == ""
+	if fromReferer {
+		rawOrigin = r.Header.Get("Referer")
 	}
-	for _, allowed := range d.Origins {
-		if origin == allowed {
-			return true
-		}
+	u, err := url.Parse(rawOrigin)
+	if err != nil || u.Host == "" || u.User != nil || u.Scheme != requestHost.Scheme || !strings.EqualFold(u.Host, r.Host) {
+		return false
 	}
-	return false
+	if !fromReferer && (u.Path != "" || u.RawQuery != "" || u.Fragment != "") {
+		return false
+	}
+	return true
+}
+
+func privateLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func privateHeaders(w http.ResponseWriter) {
