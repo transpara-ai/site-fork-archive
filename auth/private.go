@@ -211,6 +211,15 @@ func (a *PrivateAccess) Register(mux *http.ServeMux) {
 		u := UserFromContext(r.Context())
 		_ = json.NewEncoder(w).Encode(map[string]string{"id": u.ID, "name": u.Name, "role": u.Role})
 	}))
+	mux.Handle("GET /oauth2/userinfo", a.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		u := UserFromContext(r.Context())
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"user": u.ID,
+			"name": u.Name,
+			"role": u.Role,
+		})
+	}))
 }
 
 // Gate protects even DB-backed routes registered outside graph's wrappers.
