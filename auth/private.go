@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -170,6 +171,32 @@ func privateSpaceMembershipActionAllowed(role, method, path, operation string) b
 
 func privateSpaceMembershipActionCandidate(role, method, path string) bool {
 	return privateSpaceMembershipActionAllowed(role, method, path, "join")
+}
+
+func privateSpaceMembershipOperation(w http.ResponseWriter, r *http.Request) (string, error) {
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		raw, err := io.ReadAll(r.Body)
+		if err != nil {
+			return "", err
+		}
+		r.Body = io.NopCloser(bytes.NewReader(raw))
+		var request struct {
+			Operation string `json:"op"`
+		}
+		decoder := json.NewDecoder(bytes.NewReader(raw))
+		if err := decoder.Decode(&request); err != nil {
+			return "", err
+		}
+		if err := decoder.Decode(new(any)); err != io.EOF {
+			return "", errors.New("invalid JSON trailing data")
+		}
+		return request.Operation, nil
+	}
+	if err := r.ParseForm(); err != nil {
+		return "", err
+	}
+	return r.PostForm.Get("op"), nil
 }
 
 func NewPrivateAccess(db *sql.DB, file string) (*PrivateAccess, error) {
@@ -377,12 +404,12 @@ func (a *PrivateAccess) RequireAuth(next http.HandlerFunc) http.Handler {
 		}
 		actionAllowed := PrivateActionAllowed(operator.Role, r.Method, r.URL.Path)
 		if !actionAllowed && privateSpaceMembershipActionCandidate(operator.Role, r.Method, r.URL.Path) {
-			r.Body = http.MaxBytesReader(w, r.Body, 4096)
-			if err := r.ParseForm(); err != nil {
+			operation, err := privateSpaceMembershipOperation(w, r)
+			if err != nil {
 				http.Error(w, "Invalid space membership request.", http.StatusBadRequest)
 				return
 			}
-			actionAllowed = privateSpaceMembershipActionAllowed(operator.Role, r.Method, r.URL.Path, r.PostForm.Get("op"))
+			actionAllowed = privateSpaceMembershipActionAllowed(operator.Role, r.Method, r.URL.Path, operation)
 		}
 		if !actionAllowed {
 			http.Error(w, "Your role cannot perform this action.", 403)

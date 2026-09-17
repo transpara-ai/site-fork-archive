@@ -37,7 +37,18 @@ func privateFixture(t *testing.T) (*PrivateAccess, *http.ServeMux, string, Priva
 	mux.Handle("GET /console/workbench/work/id/artifact", a.RequireAuth(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(UserFromContext(r.Context()).ID)) }))
 	mux.Handle("POST /console/workbench/work/id/confirm", a.RequireAuth(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(UserFromContext(r.Context()).ID)) }))
 	mux.Handle("POST /app/demo/op", a.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(UserFromContext(r.Context()).ID + ":" + r.FormValue("op")))
+		operation := r.FormValue("op")
+		if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+			var request struct {
+				Operation string `json:"op"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+				http.Error(w, "invalid JSON", http.StatusBadRequest)
+				return
+			}
+			operation = request.Operation
+		}
+		w.Write([]byte(UserFromContext(r.Context()).ID + ":" + operation))
 	}))
 	t.Cleanup(func() { db.Exec(`DELETE FROM private_operator_sessions WHERE operator_id IN ('alice','bob','eve')`) })
 	return a, mux, file, d
@@ -185,6 +196,15 @@ func TestPrivateSpaceMembershipIsSelfServiceAndOperationScoped(t *testing.T) {
 		if w.Code != tc.status || (tc.want != "" && w.Body.String() != tc.want) {
 			t.Errorf("%s: status=%d body=%q, want status=%d body=%q", tc.name, w.Code, w.Body.String(), tc.status, tc.want)
 		}
+	}
+	r := httptest.NewRequest(http.MethodPost, "http://localhost:8080/app/demo/op", strings.NewReader(`{"op":"join"}`))
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Origin", "http://localhost:8080")
+	r.AddCookie(alice)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+	if w.Code != http.StatusOK || w.Body.String() != "alice:join" {
+		t.Fatalf("reviewer JSON join: status=%d body=%q", w.Code, w.Body.String())
 	}
 	if privateSpaceMembershipActionAllowed("reviewer", http.MethodPost, "/app/demo/op/extra", "join") ||
 		privateSpaceMembershipActionAllowed("reviewer", http.MethodPost, "/app//op", "join") {
