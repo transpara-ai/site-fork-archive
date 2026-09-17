@@ -12,7 +12,6 @@ COPY static ./static
 COPY views ./views
 COPY graph ./graph
 COPY cmd ./cmd
-COPY handlers ./handlers
 
 RUN npx @tailwindcss/cli \
     -i ./static/css/input.css \
