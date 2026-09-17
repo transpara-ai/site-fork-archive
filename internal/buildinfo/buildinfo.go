@@ -10,6 +10,10 @@ import (
 //go:embed VERSION
 var version string
 
+// embeddedRevision is populated by the supported build paths with -ldflags.
+// SITE_REVISION remains an explicit runtime override for packaged deployments.
+var embeddedRevision string
+
 // Version returns the semantic release version embedded in the Site binary.
 func Version() string {
 	return strings.TrimSpace(version)
@@ -18,6 +22,9 @@ func Version() string {
 // Revision returns the short source revision injected by the deployment.
 func Revision() string {
 	revision := strings.TrimSpace(os.Getenv("SITE_REVISION"))
+	if revision == "" {
+		revision = strings.TrimSpace(embeddedRevision)
+	}
 	if len(revision) > 12 {
 		return revision[:12]
 	}

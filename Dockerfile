@@ -21,6 +21,8 @@ RUN npx @tailwindcss/cli \
 # ── Go build stage ──────────────────────────────────────────────────
 FROM golang:1.25-alpine AS builder
 
+ARG SITE_REVISION
+
 RUN go install github.com/a-h/templ/cmd/templ@latest
 
 WORKDIR /app
@@ -33,7 +35,10 @@ COPY go.mod go.sum ./
 COPY . .
 COPY --from=css-builder /app/static/css/site.css ./static/css/site.css
 RUN templ generate
-RUN CGO_ENABLED=0 go build -mod=vendor -o /site ./cmd/site/
+RUN test -n "$SITE_REVISION" || (echo "SITE_REVISION build argument is required" >&2; exit 1)
+RUN CGO_ENABLED=0 go build -mod=vendor \
+    -ldflags "-X github.com/transpara-ai/site/internal/buildinfo.embeddedRevision=$SITE_REVISION" \
+    -o /site ./cmd/site/
 
 # ── Final stage ─────────────────────────────────────────────────────
 FROM alpine:3.21
