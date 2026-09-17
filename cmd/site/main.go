@@ -339,6 +339,16 @@ func main() {
 			if err != nil {
 				log.Fatalf("private access: %v", err)
 			}
+			hiveSiteOpsAPIKey, err := environmentOrSecretFile("HIVE_SITE_OPS_API_KEY")
+			if err != nil {
+				log.Fatal(err)
+			}
+			if hiveSiteOpsAPIKey != "" {
+				if err := privateAccess.SetHiveSiteOpsAPIKey(hiveSiteOpsAPIKey); err != nil {
+					log.Fatalf("private Hive Site-ops access: %v", err)
+				}
+				log.Println("Hive Site-ops machine authentication enabled")
+			}
 			privateAccess.Register(mux)
 			writeWrap, readWrap = privateAccess.RequireAuth, privateAccess.RequireAuth
 			log.Println("auth enabled (named private operators)")

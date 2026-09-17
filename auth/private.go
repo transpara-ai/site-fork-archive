@@ -35,20 +35,30 @@ type PrivateDirectory struct {
 }
 
 type PrivateAccess struct {
-	db     *sql.DB
-	file   string
-	secure bool
-	now    func() time.Time
+	db                 *sql.DB
+	file               string
+	secure             bool
+	now                func() time.Time
+	hiveSiteOpsKeyHash [sha256.Size]byte
+	hiveSiteOpsKeySet  bool
 }
 
 var operatorIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{1,63}$`)
 
 type privateRosterKey struct{}
+type hiveSiteOpsMachineKey struct{}
 
 // PrivateOperators returns only public operator identity and role fields.
 func PrivateOperators(ctx context.Context) []User {
 	users, _ := ctx.Value(privateRosterKey{}).([]User)
 	return append([]User(nil), users...)
+}
+
+// IsHiveSiteOpsMachine reports whether private-access middleware authenticated
+// this request with the route-scoped Hive reconciliation credential.
+func IsHiveSiteOpsMachine(ctx context.Context) bool {
+	authorized, _ := ctx.Value(hiveSiteOpsMachineKey{}).(bool)
+	return authorized
 }
 
 func privateHash(value string) string {
@@ -159,6 +169,39 @@ func NewPrivateAccess(db *sql.DB, file string) (*PrivateAccess, error) {
 	return a, nil
 }
 
+// SetHiveSiteOpsAPIKey enables one machine-authenticated read boundary for
+// Hive reconciliation. The raw key is hashed immediately and is never kept in
+// process state. All other private routes continue to require an operator
+// session.
+func (a *PrivateAccess) SetHiveSiteOpsAPIKey(key string) error {
+	key = strings.TrimSpace(key)
+	if len(key) < 32 {
+		return errors.New("Hive Site-ops API key must contain at least 32 characters")
+	}
+	a.hiveSiteOpsKeyHash = sha256.Sum256([]byte(key))
+	a.hiveSiteOpsKeySet = true
+	return nil
+}
+
+func (a *PrivateAccess) hiveSiteOpsMachine(r *http.Request) *User {
+	if !a.hiveSiteOpsKeySet || r.Method != http.MethodGet || r.URL.Path != "/api/hive/site-ops" {
+		return nil
+	}
+	authorization := r.Header.Get("Authorization")
+	if !strings.HasPrefix(authorization, "Bearer ") {
+		return nil
+	}
+	key := strings.TrimSpace(strings.TrimPrefix(authorization, "Bearer "))
+	if len(key) < 32 {
+		return nil
+	}
+	candidate := sha256.Sum256([]byte(key))
+	if subtle.ConstantTimeCompare(candidate[:], a.hiveSiteOpsKeyHash[:]) != 1 {
+		return nil
+	}
+	return &User{ID: "hive-reconciliation", Name: "Hive reconciliation", Role: "service", Kind: "agent"}
+}
+
 func (a *PrivateAccess) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/login", a.loginPage)
 	mux.HandleFunc("POST /auth/login", a.login)
@@ -267,6 +310,12 @@ func (a *PrivateAccess) RequireAuth(next http.HandlerFunc) http.Handler {
 		}
 		if !privateOriginAllowed(r, d, r.Method != http.MethodGet && r.Method != http.MethodHead) {
 			http.Error(w, "Request origin is not allowed.", 403)
+			return
+		}
+		if machine := a.hiveSiteOpsMachine(r); machine != nil {
+			ctx := ContextWithUser(r.Context(), machine)
+			ctx = context.WithValue(ctx, hiveSiteOpsMachineKey{}, true)
+			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
 		cookie, err := r.Cookie("civilization_session")
