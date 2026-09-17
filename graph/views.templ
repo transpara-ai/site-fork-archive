@@ -71,6 +71,7 @@ templ appLayout(space Space, spaces []Space, activeLens string, user ViewUser, p
 						<span class="text-sm text-warm-secondary truncate">{ space.Name }</span>
 					</div>
 					<div class="flex items-center gap-5 text-sm text-warm-muted">
+						@siteReleaseBadge()
 						for _, item := range p.GetHeaderNav() {
 							<a href={ templ.SafeURL(item.Path) } class="hover:text-brand transition-colors hidden md:inline">{ item.Label }</a>
 						}
@@ -5253,6 +5254,7 @@ templ simpleFooter(p *profile.Profile) {
 			<div>
 				<span class="font-display text-sm text-warm-faint">{ p.GetBrandName() }</span>
 				<p class="text-[10px] text-warm-faint mt-1">{ p.GetCopy("tagline", "Governed autonomous operations.") }</p>
+				<div class="mt-2">@siteReleaseBadge()</div>
 			</div>
 			<div class="flex flex-wrap gap-x-6 gap-y-2 text-xs text-warm-faint">
 				for _, item := range p.GetFooterNav() {

@@ -3,6 +3,7 @@ package graph
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/transpara-ai/site/assets"
 	"github.com/transpara-ai/site/profile"
@@ -22,6 +23,7 @@ templ ConsolePage(data ConsolePageData, user ViewUser, p *profile.Profile) {
 						<h1 class="text-2xl md:text-3xl font-display font-normal text-warm">Mission control</h1>
 						<p class="text-sm text-warm-muted">transpara-ai civilization</p>
 					</div>
+					@siteReleaseBadge()
 				</header>
 				<nav class="flex gap-1 border-b border-edge pb-1 text-sm overflow-x-auto">
 					@consoleTab("workbench", "Workbench", "/console/workbench", data.Active, true)
@@ -834,14 +836,17 @@ templ consoleConfig(c ConsoleConfig) {
 						<div class="rounded-md border border-edge bg-void/30 px-3 py-2">
 							<p class="text-xs font-medium text-warm">Judgment</p>
 							<p class="mt-1 text-[11px] text-warm-muted">Deep reasoning for ambiguous, high-impact planning and review.</p>
+							<p class="mt-2 text-[11px] text-brand">Default · <span class="font-mono">{ consoleConfigTierDefault(c.Selection, "judgment") }</span></p>
 						</div>
 						<div class="rounded-md border border-edge bg-void/30 px-3 py-2">
 							<p class="text-xs font-medium text-warm">Execution</p>
 							<p class="mt-1 text-[11px] text-warm-muted">Balanced work for implementation and tool use.</p>
+							<p class="mt-2 text-[11px] text-brand">Default · <span class="font-mono">{ consoleConfigTierDefault(c.Selection, "execution") }</span></p>
 						</div>
 						<div class="rounded-md border border-edge bg-void/30 px-3 py-2">
 							<p class="text-xs font-medium text-warm">Volume</p>
 							<p class="mt-1 text-[11px] text-warm-muted">Fast, economical handling of routine, high-throughput work.</p>
+							<p class="mt-2 text-[11px] text-brand">Default · <span class="font-mono">{ consoleConfigTierDefault(c.Selection, "volume") }</span></p>
 						</div>
 					</div>
 				</div>
@@ -886,6 +891,11 @@ templ consoleConfigModelRow(model OpsHiveModelCatalogEntry) {
 		<span class="text-xs text-warm-muted">{ orFallback(model.Provider, "provider not projected") }</span>
 		<span data-model-auth={ orFallback(model.AuthMode, "auth not projected") } class="text-xs text-warm-muted">{ orFallback(model.AuthMode, "auth not projected") }</span>
 		<span class="text-xs text-warm-muted">{ orFallback(model.Tier, "tier not projected") }</span>
+		if len(consoleConfigReasoningEfforts(model)) > 0 {
+			<span class="text-xs text-warm-faint">Effort: { strings.Join(consoleConfigReasoningEfforts(model), " · ") }</span>
+		} else {
+			<span class="text-xs text-warm-faint">Effort levels not reported</span>
+		}
 		if model.Deprecated {
 			<span class="text-xs text-amber-300 ml-auto">deprecated</span>
 		}

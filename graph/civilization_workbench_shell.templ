@@ -8,6 +8,7 @@ templ civilizationWorkbenchShell(data CivilizationWorkbench) {
 				<a href="/console/workbench" class="wb-brand"><span class="wb-mark" aria-hidden="true">◇</span><span>Civilization<small>Mission control</small></span></a>
 				<nav aria-label="Mission control" class="wb-navigation"><a href="/console/workbench" aria-current="page">Workbench</a><a href="/console">Overview</a><a href="/console/health">Health wall</a><a href="/console/kanban">Kanban</a><a href="/console/intake">Intake</a><a href="/console/config">Config</a></nav>
 				<div class="wb-sidebar-footer"><span>transpara-ai</span>
+					@siteReleaseBadge()
 					if data.ViewerRole != "" {
 						<span>{ data.ViewerName }</span><small>{ data.ViewerRole }</small>
 						<form method="post" action="/auth/logout"><button class="wb-button" type="submit">Sign out</button></form>
