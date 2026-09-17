@@ -36,6 +36,20 @@ func privateFixture(t *testing.T) (*PrivateAccess, *http.ServeMux, string, Priva
 	a.Register(mux)
 	mux.Handle("GET /console/workbench/work/id/artifact", a.RequireAuth(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(UserFromContext(r.Context()).ID)) }))
 	mux.Handle("POST /console/workbench/work/id/confirm", a.RequireAuth(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(UserFromContext(r.Context()).ID)) }))
+	mux.Handle("POST /app/demo/op", a.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		operation := r.FormValue("op")
+		if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+			var request struct {
+				Operation string `json:"op"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+				http.Error(w, "invalid JSON", http.StatusBadRequest)
+				return
+			}
+			operation = request.Operation
+		}
+		w.Write([]byte(UserFromContext(r.Context()).ID + ":" + operation))
+	}))
 	t.Cleanup(func() { db.Exec(`DELETE FROM private_operator_sessions WHERE operator_id IN ('alice','bob','eve')`) })
 	return a, mux, file, d
 }
@@ -155,6 +169,49 @@ func TestPrivateSessionIdentityPermissionsAndRevocation(t *testing.T) {
 	}
 }
 
+func TestPrivateSpaceMembershipIsSelfServiceAndOperationScoped(t *testing.T) {
+	_, mux, _, _ := privateFixture(t)
+	alice := privateSignIn(t, mux, "alice", strings.Repeat("a", 64))
+	bob := privateSignIn(t, mux, "bob", strings.Repeat("b", 64))
+	eve := privateSignIn(t, mux, "eve", strings.Repeat("e", 64))
+	for _, tc := range []struct {
+		name   string
+		cookie *http.Cookie
+		body   string
+		status int
+		want   string
+	}{
+		{"reviewer joins", alice, "op=join", http.StatusOK, "alice:join"},
+		{"reviewer leaves", alice, "op=leave", http.StatusOK, "alice:leave"},
+		{"operator joins", bob, "op=join", http.StatusOK, "bob:join"},
+		{"viewer cannot join", eve, "op=join", http.StatusForbidden, ""},
+		{"other operation remains denied", alice, "op=assign", http.StatusForbidden, ""},
+		{"query cannot authorize body", alice, "", http.StatusForbidden, ""},
+	} {
+		path := "/app/demo/op"
+		if tc.name == "query cannot authorize body" {
+			path += "?op=join"
+		}
+		w := privateRequest(mux, http.MethodPost, path, tc.body, "http://localhost:8080", tc.cookie)
+		if w.Code != tc.status || (tc.want != "" && w.Body.String() != tc.want) {
+			t.Errorf("%s: status=%d body=%q, want status=%d body=%q", tc.name, w.Code, w.Body.String(), tc.status, tc.want)
+		}
+	}
+	r := httptest.NewRequest(http.MethodPost, "http://localhost:8080/app/demo/op", strings.NewReader(`{"op":"join"}`))
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Origin", "http://localhost:8080")
+	r.AddCookie(alice)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, r)
+	if w.Code != http.StatusOK || w.Body.String() != "alice:join" {
+		t.Fatalf("reviewer JSON join: status=%d body=%q", w.Code, w.Body.String())
+	}
+	if privateSpaceMembershipActionAllowed("reviewer", http.MethodPost, "/app/demo/op/extra", "join") ||
+		privateSpaceMembershipActionAllowed("reviewer", http.MethodPost, "/app//op", "join") {
+		t.Fatal("malformed membership route allowed")
+	}
+}
+
 func TestPrivateOriginAndRoleBoundaries(t *testing.T) {
 	d := PrivateDirectory{Origins: []string{"http://localhost:8080"}}
 	for _, origin := range []string{"null", "http://localhost:8080.evil.test", "http://localhost:8081", "http://localhost:8080/path", "http://evil.test"} {
@@ -223,6 +280,17 @@ func TestPrivateOriginAndRoleBoundaries(t *testing.T) {
 	}
 	if PrivateActionAllowed("reviewer", "POST", "/ops/hive/runtime/start") {
 		t.Fatal("unlisted action allowed")
+	}
+	for _, role := range []string{"reviewer", "operator"} {
+		for _, operation := range []string{"join", "leave"} {
+			if !privateSpaceMembershipActionAllowed(role, http.MethodPost, "/app/demo/op", operation) {
+				t.Fatalf("%s could not %s space", role, operation)
+			}
+		}
+	}
+	if privateSpaceMembershipActionAllowed("viewer", http.MethodPost, "/app/demo/op", "join") ||
+		privateSpaceMembershipActionAllowed("reviewer", http.MethodPost, "/app/demo/op", "kick") {
+		t.Fatal("space membership authorization escaped its boundary")
 	}
 }
 

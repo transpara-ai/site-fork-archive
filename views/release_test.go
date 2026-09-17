@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/transpara-ai/site/internal/buildinfo"
 	"github.com/transpara-ai/site/profile"
 )
 
@@ -15,7 +16,7 @@ func TestSharedLayoutShowsSiteVersion(t *testing.T) {
 	if err := Layout("Test", "", profile.Default()).Render(context.Background(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(body.String(), `data-site-version="0.1.2"`) || !strings.Contains(body.String(), "Site v0.1.2 · abcdef012345") {
+	if !strings.Contains(body.String(), `data-site-version="`+buildinfo.Version()+`"`) || !strings.Contains(body.String(), "Site v"+buildinfo.Version()+" · abcdef012345") {
 		t.Fatalf("shared layout missing release identity")
 	}
 }
