@@ -823,27 +823,69 @@ templ consoleConfig(c ConsoleConfig) {
 			</div>
 			<div class="border border-edge bg-surface rounded-lg overflow-hidden">
 				<div class="px-4 py-2 border-b border-edge text-sm font-medium text-warm">Model catalog</div>
-				<p class="px-4 py-2 text-xs text-warm-muted">Known model choices. Execution requires access through the selected provider. Existing role assignments keep their selected models.</p>
+				<div class="px-4 py-3 border-b border-edge space-y-3">
+					<p class="text-xs text-warm-muted">Known model choices grouped by credential path. “Catalog checked” means the model metadata was reviewed on that date; it does not prove that this deployment can execute the model.</p>
+					<div class="grid gap-2 md:grid-cols-3" aria-label="Routing tier definitions">
+						<div class="rounded-md border border-edge bg-void/30 px-3 py-2">
+							<p class="text-xs font-medium text-warm">Judgment</p>
+							<p class="mt-1 text-[11px] text-warm-muted">Deep reasoning for ambiguous, high-impact planning and review.</p>
+						</div>
+						<div class="rounded-md border border-edge bg-void/30 px-3 py-2">
+							<p class="text-xs font-medium text-warm">Execution</p>
+							<p class="mt-1 text-[11px] text-warm-muted">Balanced work for implementation and tool use.</p>
+						</div>
+						<div class="rounded-md border border-edge bg-void/30 px-3 py-2">
+							<p class="text-xs font-medium text-warm">Volume</p>
+							<p class="mt-1 text-[11px] text-warm-muted">Fast, economical handling of routine, high-throughput work.</p>
+						</div>
+					</div>
+				</div>
 				if len(c.Selection.Models) == 0 {
 					<div class="px-4 py-3 text-sm text-warm-muted">No catalog models projected. The catalog is hive-owned (<span class="font-mono text-[11px]">HIVE_OPS_CATALOG</span>) and hot-reloaded.</div>
 				} else {
-					for _, m := range c.Selection.Models {
-						<div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 border-b border-edge last:border-0">
-							<span class="text-sm text-warm font-mono break-all">{ orFallback(m.ID, "id not projected") }</span>
-							if m.Metadata["verified_at"] != "" {
-								<span class="text-xs text-emerald-300">verified { m.Metadata["verified_at"] }</span>
-							}
-							<span class="text-xs text-warm-muted">{ orFallback(m.Provider, "provider not projected") }</span>
-							<span class="text-xs text-warm-muted">{ orFallback(m.AuthMode, "auth not projected") }</span>
-							<span class="text-xs text-warm-muted">{ orFallback(m.Tier, "tier not projected") }</span>
-							if m.Deprecated {
-								<span class="text-xs text-amber-300 ml-auto">deprecated</span>
-							}
-						</div>
-					}
+					@consoleConfigModelGroup("Subscription access", "Uses an authenticated Claude Code or Codex CLI session. No provider API key is required.", "subscription", consoleConfigModelsByAuth(c.Selection.Models, "subscription"))
+					@consoleConfigModelGroup("API key access", "Requires a separately configured provider API key. A CLI subscription does not authorize these entries.", "api-key", consoleConfigModelsByAuth(c.Selection.Models, "api-key"))
+					@consoleConfigModelGroup("Other access", "Uses a local or separately defined credential path.", "other", consoleConfigModelsWithOtherAuth(c.Selection.Models))
 				}
 			</div>
 			<p class="text-xs text-warm-muted">Model policy is hive-owned. This console renders the routing projection only; it never persists or forwards changes.</p>
 		}
 	</section>
+}
+
+templ consoleConfigModelGroup(title, description, access string, models []OpsHiveModelCatalogEntry) {
+	if len(models) > 0 {
+		<section data-model-access={ access } class="border-b border-edge last:border-0">
+			<div class="flex flex-col gap-1 border-b border-edge bg-void/20 px-4 py-3 md:flex-row md:items-start md:justify-between md:gap-4">
+				<div>
+					<h3 class="text-sm font-medium text-warm">{ title }</h3>
+					<p class="mt-1 text-xs text-warm-muted">{ description }</p>
+				</div>
+				<span class="shrink-0 text-xs text-warm-faint">{ strconv.Itoa(len(models)) } models</span>
+			</div>
+			for _, model := range models {
+				@consoleConfigModelRow(model)
+			}
+		</section>
+	}
+}
+
+templ consoleConfigModelRow(model OpsHiveModelCatalogEntry) {
+	<div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-edge px-4 py-2 last:border-0">
+		<span class="text-sm text-warm font-mono break-all">{ orFallback(model.ID, "id not projected") }</span>
+		if model.Metadata["subscription_verified_at"] != "" {
+			<span class="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300">Subscription verified { model.Metadata["subscription_verified_at"] }</span>
+		} else if model.Metadata["subscription_unavailable_at"] != "" {
+			<span class="rounded-full border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-[10px] text-rose-300">Unavailable via subscription { model.Metadata["subscription_unavailable_at"] }</span>
+		}
+		if model.Metadata["verified_at"] != "" {
+			<span class="text-xs text-emerald-300">Catalog checked { model.Metadata["verified_at"] }</span>
+		}
+		<span class="text-xs text-warm-muted">{ orFallback(model.Provider, "provider not projected") }</span>
+		<span data-model-auth={ orFallback(model.AuthMode, "auth not projected") } class="text-xs text-warm-muted">{ orFallback(model.AuthMode, "auth not projected") }</span>
+		<span class="text-xs text-warm-muted">{ orFallback(model.Tier, "tier not projected") }</span>
+		if model.Deprecated {
+			<span class="text-xs text-amber-300 ml-auto">deprecated</span>
+		}
+	</div>
 }
