@@ -170,6 +170,39 @@ func TestPrivateOriginAndRoleBoundaries(t *testing.T) {
 	if privateOriginAllowed(r, d, true) {
 		t.Fatal("cross-site accepted")
 	}
+	for _, tc := range []struct {
+		name, target, origin string
+		mutation, allowed    bool
+	}{
+		{"ephemeral loopback read", "http://localhost:52128/console/workbench", "", false, true},
+		{"ephemeral loopback mutation", "http://localhost:52128/console/workbench/intake", "http://localhost:52128", true, true},
+		{"ephemeral port mismatch", "http://localhost:52128/console/workbench/intake", "http://localhost:8080", true, false},
+		{"loopback name mismatch", "http://127.0.0.1:52128/console/workbench", "", false, false},
+		{"lookalike hostname", "http://localhost.evil.test:52128/console/workbench", "", false, false},
+		{"origin path", "http://localhost:52128/console/workbench/intake", "http://localhost:52128/path", true, false},
+	} {
+		r := httptest.NewRequest("GET", tc.target, nil)
+		if tc.mutation {
+			r.Method = "POST"
+			r.Header.Set("Origin", tc.origin)
+		}
+		if got := privateOriginAllowed(r, d, tc.mutation); got != tc.allowed {
+			t.Errorf("%s: allowed=%t, want %t", tc.name, got, tc.allowed)
+		}
+	}
+	remote := PrivateDirectory{Origins: []string{"https://control.example:8080"}}
+	for _, tc := range []struct {
+		target  string
+		allowed bool
+	}{
+		{"https://control.example:8080/console/workbench", true},
+		{"https://control.example:52128/console/workbench", false},
+	} {
+		r := httptest.NewRequest("GET", tc.target, nil)
+		if got := privateOriginAllowed(r, remote, false); got != tc.allowed {
+			t.Errorf("remote host %s: allowed=%t, want %t", tc.target, got, tc.allowed)
+		}
+	}
 	for _, path := range []string{"/console/workbench/intake", "/console/workbench/work/id/run", "/console/workbench/work/id/human-owner", "/console/workbench/work/id/interventions/q/resolve"} {
 		if !PrivateActionAllowed("operator", "POST", path) || PrivateActionAllowed("viewer", "POST", path) {
 			t.Fatal(path)
