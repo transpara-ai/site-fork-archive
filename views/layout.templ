@@ -81,6 +81,7 @@ templ Layout(title, description string, p *profile.Profile, user ...SiteUser) {
 					<div>
 						<span class="font-display text-sm text-warm-faint">{ p.GetBrandName() }</span>
 						<p class="text-[10px] text-warm-faint mt-1">{ p.GetCopy("tagline", "Governed autonomous operations.") }</p>
+						<span data-site-version={ siteVersion() } class="mt-2 inline-flex text-[10px] font-mono text-warm-faint" title="Site release">Site { siteReleaseDisplay() }</span>
 					</div>
 					<div class="flex flex-wrap gap-x-6 gap-y-2 text-xs text-warm-faint">
 						for _, item := range p.GetFooterNav() {

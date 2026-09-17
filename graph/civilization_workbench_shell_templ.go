@@ -29,7 +29,11 @@ func civilizationWorkbenchShell(data CivilizationWorkbench) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<body class=\"civilization-shell\"><a class=\"wb-skip\" href=\"#workbench-main\">Skip to workbench</a><div class=\"wb-shell\"><aside class=\"wb-sidebar\"><a href=\"/console/workbench\" class=\"wb-brand\"><span class=\"wb-mark\" aria-hidden=\"true\">◇</span><span>Civilization<small>Mission control</small></span></a><nav aria-label=\"Mission control\" class=\"wb-navigation\"><a href=\"/console/workbench\" aria-current=\"page\">Workbench</a><a href=\"/console\">Overview</a><a href=\"/console/health\">Health wall</a><a href=\"/console/kanban\">Kanban</a><a href=\"/console/intake\">Intake</a><a href=\"/console/config\">Config</a></nav><div class=\"wb-sidebar-footer\"><span>transpara-ai</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<body class=\"civilization-shell\"><a class=\"wb-skip\" href=\"#workbench-main\">Skip to workbench</a><div class=\"wb-shell\"><aside class=\"wb-sidebar\"><a href=\"/console/workbench\" class=\"wb-brand\"><span class=\"wb-mark\" aria-hidden=\"true\">◇</span><span>Civilization<small>Mission control</small></span></a><nav aria-label=\"Mission control\" class=\"wb-navigation\"><a href=\"/console/workbench\" aria-current=\"page\">Workbench</a><a href=\"/console\">Overview</a><a href=\"/console/health\">Health wall</a><a href=\"/console/kanban\">Kanban</a><a href=\"/console/intake\">Intake</a><a href=\"/console/config\">Config</a></nav><div class=\"wb-sidebar-footer\"><span>transpara-ai</span>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = siteReleaseBadge().Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -41,7 +45,7 @@ func civilizationWorkbenchShell(data CivilizationWorkbench) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(data.ViewerName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `graph/civilization_workbench_shell.templ`, Line: 12, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `graph/civilization_workbench_shell.templ`, Line: 13, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -54,7 +58,7 @@ func civilizationWorkbenchShell(data CivilizationWorkbench) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.ViewerRole)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `graph/civilization_workbench_shell.templ`, Line: 12, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `graph/civilization_workbench_shell.templ`, Line: 13, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {

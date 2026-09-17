@@ -102,6 +102,37 @@ func consoleConfigCatalogLoadedAt(raw string) string {
 	return raw
 }
 
+func consoleConfigTierDefault(sel OpsHiveModelSelection, tier string) string {
+	if model := strings.TrimSpace(sel.TierDefaults[tier]); model != "" {
+		return model
+	}
+	return "not projected"
+}
+
+func consoleConfigReasoningEfforts(model OpsHiveModelCatalogEntry) []string {
+	raw := strings.TrimSpace(model.Metadata["reasoning_efforts"])
+	if raw == "" {
+		return nil
+	}
+	labels := map[string]string{
+		"none": "None", "minimal": "Minimal", "low": "Low", "medium": "Medium",
+		"high": "High", "xhigh": "Extra high", "max": "Max",
+	}
+	var efforts []string
+	for _, value := range strings.Split(raw, ",") {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value == "" {
+			continue
+		}
+		if label, ok := labels[value]; ok {
+			efforts = append(efforts, label)
+		} else {
+			efforts = append(efforts, value)
+		}
+	}
+	return efforts
+}
+
 func consoleConfigModelsByAuth(models []OpsHiveModelCatalogEntry, authMode string) []OpsHiveModelCatalogEntry {
 	var filtered []OpsHiveModelCatalogEntry
 	for _, model := range models {

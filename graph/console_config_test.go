@@ -19,9 +19,12 @@ func testConfigModelSelection() OpsHiveModelSelection {
 	return OpsHiveModelSelection{
 		Source:        "hive-operator-projection",
 		CatalogSource: "catalog-mixed.yaml",
+		TierDefaults: map[string]string{
+			"judgment": "gpt-6-astra", "execution": "claude-fable-5-1", "volume": "gpt-5.6-sol",
+		},
 		Models: []OpsHiveModelCatalogEntry{
-			{ID: "claude-opus-4-6", Provider: "claude-cli", AuthMode: "subscription", Tier: "judgment"},
-			{ID: "gpt-5.5", Provider: "codex-cli", AuthMode: "subscription", Tier: "execution"},
+			{ID: "claude-opus-4-6", Provider: "claude-cli", AuthMode: "subscription", Tier: "judgment", Metadata: map[string]string{"reasoning_efforts": "medium,high,xhigh,max"}},
+			{ID: "gpt-5.5", Provider: "codex-cli", AuthMode: "subscription", Tier: "execution", Metadata: map[string]string{"reasoning_efforts": "low,medium,high"}},
 		},
 		Assignments: []OpsHiveModelRoleAssignment{
 			// Policy-event assignment → obsAssignmentModelModeState = ("Manual", "override").
@@ -197,6 +200,8 @@ func TestConsoleConfigRendersModelRouting(t *testing.T) {
 	// Catalog entries, role assignments, provenance, and catalog source all render.
 	for _, want := range []string{
 		"claude-opus-4-6", "gpt-5.5", // catalog + assignment models
+		"gpt-6-astra", "claude-fable-5-1", "gpt-5.6-sol", // tier defaults
+		"Effort: Medium · High · Extra high · Max", // supported effort levels
 		"strategist", "implementer", // roles
 		"Manual · override",  // policy-event provenance (strategist)
 		"Manual · inferred",  // plain-model provenance (implementer)

@@ -729,6 +729,7 @@ type OpsHiveCausalEdge struct {
 type OpsHiveModelSelection struct {
 	Source        string                       `json:"source"`
 	CatalogSource string                       `json:"catalog_source"`
+	TierDefaults  map[string]string            `json:"tier_defaults"`
 	GlobalMode    string                       `json:"global_mode"`
 	SelectionMode string                       `json:"selection_mode"`
 	LoadedAt      string                       `json:"loaded_at"`
