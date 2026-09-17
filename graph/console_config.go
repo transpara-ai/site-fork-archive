@@ -2,6 +2,7 @@ package graph
 
 import (
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 )
@@ -92,6 +93,38 @@ func consoleConfigAssignmentMode(sel OpsHiveModelSelection, item OpsHiveModelRol
 func consoleConfigGlobalMode(sel OpsHiveModelSelection) string {
 	mode, provenance, _ := obsHiveProjectionModelModeState(sel)
 	return mode + " · " + obsModeProvenanceDisplay(provenance)
+}
+
+func consoleConfigModelsByAuth(models []OpsHiveModelCatalogEntry, authMode string) []OpsHiveModelCatalogEntry {
+	var filtered []OpsHiveModelCatalogEntry
+	for _, model := range models {
+		if strings.EqualFold(strings.TrimSpace(model.AuthMode), authMode) {
+			filtered = append(filtered, model)
+		}
+	}
+	sort.SliceStable(filtered, func(i, j int) bool {
+		leftProvider := strings.ToLower(strings.TrimSpace(filtered[i].Provider))
+		rightProvider := strings.ToLower(strings.TrimSpace(filtered[j].Provider))
+		if leftProvider != rightProvider {
+			return leftProvider < rightProvider
+		}
+		return strings.ToLower(filtered[i].ID) < strings.ToLower(filtered[j].ID)
+	})
+	return filtered
+}
+
+func consoleConfigModelsWithOtherAuth(models []OpsHiveModelCatalogEntry) []OpsHiveModelCatalogEntry {
+	var filtered []OpsHiveModelCatalogEntry
+	for _, model := range models {
+		authMode := strings.ToLower(strings.TrimSpace(model.AuthMode))
+		if authMode != "subscription" && authMode != "api-key" {
+			filtered = append(filtered, model)
+		}
+	}
+	sort.SliceStable(filtered, func(i, j int) bool {
+		return strings.ToLower(filtered[i].ID) < strings.ToLower(filtered[j].ID)
+	})
+	return filtered
 }
 
 func (h *Handlers) handleConsoleConfig(w http.ResponseWriter, r *http.Request) {

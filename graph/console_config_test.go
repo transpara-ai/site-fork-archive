@@ -414,6 +414,45 @@ func TestConsoleConfigSourceOnlySelectionRendersHonestEmptyStates(t *testing.T) 
 	}
 }
 
+func TestConsoleConfigGroupsModelsByAccessAndExplainsTiers(t *testing.T) {
+	cfg := buildConsoleConfig(&OpsHiveProjection{
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+		ModelSelection: OpsHiveModelSelection{
+			Source: "hive-operator-projection",
+			Models: []OpsHiveModelCatalogEntry{
+				{ID: "api-model", Provider: "anthropic", AuthMode: "api-key", Tier: "judgment", Metadata: map[string]string{"verified_at": "2026-09-08"}},
+				{ID: "subscription-model", Provider: "codex-cli", AuthMode: "subscription", Tier: "execution", Metadata: map[string]string{"verified_at": "2026-09-08", "subscription_verified_at": "2026-09-17"}},
+				{ID: "local-model", Provider: "ollama", AuthMode: "local", Tier: "volume"},
+			},
+		},
+	}, nil, time.Now().UTC())
+
+	var buf bytes.Buffer
+	if err := consoleConfig(cfg).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	out := buf.String()
+	subscription := strings.Index(out, `data-model-access="subscription"`)
+	apiKey := strings.Index(out, `data-model-access="api-key"`)
+	other := strings.Index(out, `data-model-access="other"`)
+	if subscription < 0 || apiKey < 0 || other < 0 || !(subscription < apiKey && apiKey < other) {
+		t.Fatalf("access groups missing or out of order: subscription=%d api=%d other=%d", subscription, apiKey, other)
+	}
+	for _, id := range []string{"subscription-model", "api-model", "local-model"} {
+		if count := strings.Count(out, id); count != 1 {
+			t.Errorf("model %q rendered %d times, want once", id, count)
+		}
+	}
+	for _, text := range []string{"Catalog checked 2026-09-08", "Subscription verified 2026-09-17", "ambiguous, high-impact", "implementation and tool use", "routine, high-throughput"} {
+		if !strings.Contains(out, text) {
+			t.Errorf("missing explanatory copy %q", text)
+		}
+	}
+	if strings.Contains(out, "verified 2026-09-08") {
+		t.Error("catalog metadata must not be presented as runtime access verification")
+	}
+}
+
 func TestConsoleConfigEmptyStatesCarryContext(t *testing.T) {
 	// A selection with Source set but no models/assignments is usable — the
 	// empty states must carry enough context to explain WHY they're empty,
