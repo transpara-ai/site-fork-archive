@@ -419,7 +419,7 @@ func TestConsoleConfigGroupsModelsByAccessAndExplainsTiers(t *testing.T) {
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		ModelSelection: OpsHiveModelSelection{
 			Source:   "hive-operator-projection",
-			LoadedAt: "2026-09-17T11:22:12Z",
+			LoadedAt: "2026-09-17T11:22:12-07:00",
 			Models: []OpsHiveModelCatalogEntry{
 				{ID: "api-model", Provider: "anthropic", AuthMode: "api-key", Tier: "judgment", Metadata: map[string]string{"verified_at": "2026-09-08"}},
 				{ID: "subscription-model", Provider: "codex-cli", AuthMode: "subscription", Tier: "execution", Metadata: map[string]string{"verified_at": "2026-09-08", "subscription_verified_at": "2026-09-17"}},
@@ -449,7 +449,7 @@ func TestConsoleConfigGroupsModelsByAccessAndExplainsTiers(t *testing.T) {
 			t.Errorf("missing exact auth mode %q", authMode)
 		}
 	}
-	for _, text := range []string{"Catalog loaded 2026-09-17 11:22:12 UTC", "Subscription verified 2026-09-17", "live access checks", "ambiguous, high-impact", "implementation and tool use", "routine, high-throughput"} {
+	for _, text := range []string{"Catalog loaded 2026-09-17 18:22:12 UTC", "Subscription verified 2026-09-17", "live access checks", "ambiguous, high-impact", "implementation and tool use", "routine, high-throughput"} {
 		if !strings.Contains(out, text) {
 			t.Errorf("missing explanatory copy %q", text)
 		}

@@ -95,6 +95,13 @@ func consoleConfigGlobalMode(sel OpsHiveModelSelection) string {
 	return mode + " · " + obsModeProvenanceDisplay(provenance)
 }
 
+func consoleConfigCatalogLoadedAt(raw string) string {
+	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return t.UTC().Format("2006-01-02 15:04:05") + " UTC"
+	}
+	return raw
+}
+
 func consoleConfigModelsByAuth(models []OpsHiveModelCatalogEntry, authMode string) []OpsHiveModelCatalogEntry {
 	var filtered []OpsHiveModelCatalogEntry
 	for _, model := range models {

@@ -825,7 +825,7 @@ templ consoleConfig(c ConsoleConfig) {
 				<div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-edge">
 					<span class="text-sm font-medium text-warm">Model catalog</span>
 					if c.Selection.LoadedAt != "" {
-						<span class="text-xs text-warm-faint">Catalog loaded { formatOpsTime(c.Selection.LoadedAt) } UTC</span>
+						<span class="text-xs text-warm-faint">Catalog loaded { consoleConfigCatalogLoadedAt(c.Selection.LoadedAt) }</span>
 					}
 				</div>
 				<div class="px-4 py-3 border-b border-edge space-y-3">
