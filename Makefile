@@ -8,6 +8,8 @@ GO ?= go
 NPM ?= npm
 TEMPL ?= templ
 TAILWIND ?= ./node_modules/.bin/tailwindcss
+SITE_REVISION ?= $(shell git rev-parse --verify HEAD 2>/dev/null)
+SITE_LDFLAGS := -X github.com/transpara-ai/site/internal/buildinfo.embeddedRevision=$(SITE_REVISION)
 
 LEGACY_OPERATION_REPO := transpara-ai/civilization-operation
 
@@ -25,7 +27,7 @@ generate: generate-personas
 	$(TEMPL) generate
 
 build: css generate
-	$(GO) build -o site ./cmd/site/
+	$(GO) build -ldflags "$(SITE_LDFLAGS)" -o site ./cmd/site/
 
 test:
 	$(GO) test -count=1 ./...

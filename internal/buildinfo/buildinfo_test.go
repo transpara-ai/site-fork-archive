@@ -14,3 +14,13 @@ func TestVersionIsSemverAndDisplayIncludesRevision(t *testing.T) {
 		t.Fatalf("Display() = %q, want %q", got, want)
 	}
 }
+
+func TestEmbeddedRevisionIsUsedWithoutRuntimeOverride(t *testing.T) {
+	t.Setenv("SITE_REVISION", "")
+	previous := embeddedRevision
+	embeddedRevision = "fedcba9876543210"
+	t.Cleanup(func() { embeddedRevision = previous })
+	if got, want := Revision(), "fedcba987654"; got != want {
+		t.Fatalf("Revision() = %q, want embedded %q", got, want)
+	}
+}
