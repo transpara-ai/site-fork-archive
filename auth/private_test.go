@@ -110,6 +110,9 @@ func TestPrivateSessionIdentityPermissionsAndRevocation(t *testing.T) {
 	if w := privateRequest(restartedMux, "GET", "/auth/status", "", "", alice); w.Code != 200 || !strings.Contains(w.Body.String(), `"id":"alice"`) {
 		t.Fatal("restart lost identity", w.Body.String())
 	}
+	if w := privateRequest(restartedMux, "GET", "/oauth2/userinfo", "", "", alice); w.Code != 200 || !strings.Contains(w.Body.String(), `"user":"alice"`) || strings.Contains(w.Body.String(), alice.Value) {
+		t.Fatalf("userinfo after restart = %d %q", w.Code, w.Body.String())
+	}
 	d.Operators[0].Role = "operator"
 	roleRaw, _ := json.Marshal(d)
 	os.WriteFile(file, roleRaw, 0600)
