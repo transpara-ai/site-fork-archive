@@ -27,6 +27,7 @@ generate: generate-personas
 	$(TEMPL) generate
 
 build: css generate
+	@test -n "$(strip $(SITE_REVISION))" || { echo "SITE_REVISION is required when Git revision is unavailable" >&2; exit 1; }
 	$(GO) build -ldflags "$(SITE_LDFLAGS)" -o site ./cmd/site/
 
 test:
