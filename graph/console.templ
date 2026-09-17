@@ -822,9 +822,14 @@ templ consoleConfig(c ConsoleConfig) {
 				}
 			</div>
 			<div class="border border-edge bg-surface rounded-lg overflow-hidden">
-				<div class="px-4 py-2 border-b border-edge text-sm font-medium text-warm">Model catalog</div>
+				<div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-edge">
+					<span class="text-sm font-medium text-warm">Model catalog</span>
+					if c.Selection.LoadedAt != "" {
+						<span class="text-xs text-warm-faint">Catalog loaded { consoleConfigCatalogLoadedAt(c.Selection.LoadedAt) }</span>
+					}
+				</div>
 				<div class="px-4 py-3 border-b border-edge space-y-3">
-					<p class="text-xs text-warm-muted">Known model choices grouped by credential path. “Catalog checked” means the model metadata was reviewed on that date; it does not prove that this deployment can execute the model.</p>
+					<p class="text-xs text-warm-muted">Known model choices grouped by credential path. Per-model subscription badges report live access checks against this deployment’s authenticated provider identities.</p>
 					<div class="grid gap-2 md:grid-cols-3" aria-label="Routing tier definitions">
 						<div class="rounded-md border border-edge bg-void/30 px-3 py-2">
 							<p class="text-xs font-medium text-warm">Judgment</p>
@@ -877,9 +882,6 @@ templ consoleConfigModelRow(model OpsHiveModelCatalogEntry) {
 			<span class="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300">Subscription verified { model.Metadata["subscription_verified_at"] }</span>
 		} else if model.Metadata["subscription_unavailable_at"] != "" {
 			<span class="rounded-full border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-[10px] text-rose-300">Unavailable via subscription { model.Metadata["subscription_unavailable_at"] }</span>
-		}
-		if model.Metadata["verified_at"] != "" {
-			<span class="text-xs text-emerald-300">Catalog checked { model.Metadata["verified_at"] }</span>
 		}
 		<span class="text-xs text-warm-muted">{ orFallback(model.Provider, "provider not projected") }</span>
 		<span data-model-auth={ orFallback(model.AuthMode, "auth not projected") } class="text-xs text-warm-muted">{ orFallback(model.AuthMode, "auth not projected") }</span>
