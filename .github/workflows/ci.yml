@@ -30,14 +30,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
           path: site
+
+      # third_party/hive is a submodule of the private hive repository. The default token cannot
+      # read another repository, so check out the pinned commit with hive's read-only deploy key.
+      - name: Resolve pinned hive submodule commit
+        id: hive-submodule
+        run: echo "sha=$(git -C site rev-parse HEAD:third_party/hive)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: transpara-ai/hive
+          ref: ${{ steps.hive-submodule.outputs.sha }}
+          path: site/third_party/hive
+          ssh-key: ${{ secrets.HIVE_DEPLOY_KEY }}
 
       # Checkout sibling repo (go.mod replace directive points to ../eventgraph/go).
       - uses: actions/checkout@v4
         with:
           repository: transpara-ai/eventgraph
           path: eventgraph
+          # eventgraph is private; the default token cannot read another repository.
+          ssh-key: ${{ secrets.EVENTGRAPH_DEPLOY_KEY }}
 
       - uses: actions/setup-go@v5
         with:
